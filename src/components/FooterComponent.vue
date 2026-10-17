@@ -6,8 +6,8 @@
         <p>Soluciones inteligentes para la gestión de aguas urbanas.</p>
       </div>
       <div class="footer-buttons">
-        <button class="btn btn-secondary">Reportar Incidencia</button>
-        <button class="btn btn-primary">Soporte Técnico</button>
+        <button class="btn btn-secondary" @click="$router.push('/reportar')">Reportar Incidencia</button>
+        <button class="btn btn-primary" @click="$router.push({ path: '/', hash: '#contacto' })">Soporte Técnico</button>
       </div>
     </div>
     <div class="footer-bottom">
