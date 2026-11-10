@@ -1,61 +1,134 @@
 <template>
-  <div ref="mapa" class="mapa"></div>
+  <div class="mapa-container">
+    <div id="mapa-pozos" class="mapa-leaflet"></div>
+  </div>
 </template>
 
 <script>
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-const COLORES = { verde: '#22c55e', amarillo: '#eab308', rojo: '#ef4444' }
-
 export default {
   name: 'MapaPozosComponent',
   props: {
-    pozos: { type: Array, default: () => [] },
-    reportes: { type: Array, default: () => [] },
-    centro: { type: Array, default: () => [11.2408, -74.211] }
-  },
-  mounted() {
-    this.map = L.map(this.$refs.mapa).setView(this.centro, 16)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
-    }).addTo(this.map)
-    this.capa = L.layerGroup().addTo(this.map)
-    this.dibujar()
-  },
-  watch: {
-    pozos: 'dibujar',
-    reportes: 'dibujar'
-  },
-  methods: {
-    dibujar() {
-      this.capa.clearLayers()
-      // RF04 + RF05: pozos coloreados según su estado
-      this.pozos.forEach(p => {
-        L.circleMarker([p.lat, p.lng], {
-          radius: 10, color: '#0f172a', weight: 1,
-          fillColor: COLORES[p.estado], fillOpacity: 0.9
-        })
-          .bindPopup(`<b>${p.codigo}</b><br>${p.nombre}<br>Nivel: ${p.nivel_pct}%`)
-          .addTo(this.capa)
-      })
-      // Reportes ciudadanos abiertos: anillo azul (pendiente) o naranja (inspeccionado)
-      this.reportes.filter(r => r.estado !== 'resuelto').forEach(r => {
-        const color = r.estado === 'inspeccionado' ? '#f97316' : '#0284c7'
-        L.circleMarker([r.lat, r.lng], {
-          radius: 7, color, weight: 3, fillColor: '#fff', fillOpacity: 1
-        })
-          .bindPopup(`<b>Reporte ciudadano</b> (${r.estado})<br>${r.tipo}<br>${r.descripcion || ''}`)
-          .addTo(this.capa)
-      })
+    pozos: {
+      type: Array,
+      default: () => []
+    },
+    pozoSeleccionadoId: {
+      type: [Number, String],
+      default: null
     }
   },
-  beforeUnmount() {
-    if (this.map) this.map.remove()
+  emits: ['seleccionar-pozo'],
+  data() {
+    return {
+      map: null,
+      layerGroup: null
+    }
+  },
+  mounted() {
+    this.initMap()
+  },
+  watch: {
+    pozos: {
+      handler() {
+        this.renderMarcadores()
+      },
+      deep: true
+    },
+    pozoSeleccionadoId() {
+      this.centrarEnPozo()
+    }
+  },
+  methods: {
+    initMap() {
+      const latInicial = 11.2408
+      const lngInicial = -74.2110
+
+      this.map = L.map('mapa-pozos').setView([latInicial, lngInicial], 13)
+
+      // Servidor de mapas en modo oscuro de alta velocidad y compatibilidad global
+      L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20,
+        attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
+      }).addTo(this.map)
+
+      this.layerGroup = L.layerGroup().addTo(this.map)
+      this.renderMarcadores()
+    },
+    renderMarcadores() {
+      if (!this.map || !this.layerGroup) return
+      this.layerGroup.clearLayers()
+
+      if (!Array.isArray(this.pozos) || this.pozos.length === 0) return
+
+      this.pozos.forEach(pozo => {
+        const lat = parseFloat(pozo.latitud ?? pozo.lat)
+        const lng = parseFloat(pozo.longitud ?? pozo.lng)
+
+        if (isNaN(lat) || isNaN(lng)) return
+
+        let color = '#22c55e'
+        if (pozo.estado === 'alerta' || (pozo.nivel_pct >= 50 && pozo.nivel_pct < 75)) {
+          color = '#facc15'
+        }
+        if (pozo.estado === 'critico' || pozo.nivel_pct >= 75) {
+          color = '#f87171'
+        }
+
+        const marker = L.circleMarker([lat, lng], {
+          radius: 10,
+          fillColor: color,
+          color: '#ffffff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.9
+        })
+
+        const popupContent = `
+          <div style="color: #0f172a; font-family: sans-serif; padding: 4px;">
+            <strong style="font-size: 0.95rem; color: #0284c7;">${pozo.codigo || 'Pozo'}</strong><br/>
+            <span style="font-size: 0.85rem;">📍 ${pozo.ubicacion}</span><br/>
+            <span style="font-size: 0.85rem;">🌊 Nivel: <strong>${pozo.nivel_pct}%</strong></span>
+          </div>
+        `
+
+        marker.bindPopup(popupContent)
+        marker.on('click', () => this.$emit('seleccionar-pozo', pozo))
+        this.layerGroup.addLayer(marker)
+      })
+    },
+    centrarEnPozo() {
+      if (!this.pozoSeleccionadoId || !this.pozos.length) return
+      const pozo = this.pozos.find(p => p.id === this.pozoSeleccionadoId)
+      if (pozo) {
+        const lat = parseFloat(pozo.latitud ?? pozo.lat)
+        const lng = parseFloat(pozo.longitud ?? pozo.lng)
+        if (!isNaN(lat) && !isNaN(lng)) {
+          this.map.setView([lat, lng], 15, { animate: true })
+        }
+      }
+    }
   }
 }
 </script>
 
 <style scoped>
-.mapa { height: 460px; width: 100%; border-radius: 10px; border: 1px solid #cbd5e1; }
+.mapa-container {
+  width: 100%;
+  height: 100%;
+  min-height: 480px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+.mapa-leaflet {
+  width: 100%;
+  height: 100%;
+  min-height: 480px;
+  background: #090d16;
+}
 </style>

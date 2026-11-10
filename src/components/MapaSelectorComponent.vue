@@ -58,6 +58,16 @@ export default {
 </script>
 
 <style scoped>
-.mapa { height: 380px; width: 100%; border-radius: 10px; border: 1px solid #cbd5e1; }
-.hint { font-size: 0.85rem; color: #64748b; margin: 0.5rem 0 0; }
+.mapa {
+  height: 380px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0.5rem 0 0;
+}
 </style>

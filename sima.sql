@@ -1,84 +1,95 @@
+-- ============================================================
+-- SCRIPT COMPLETO DE BASE DE DATOS: SIMA
+-- Sistema de Monitoreo de Alcantarillado
+-- ============================================================
 
---  SIMA - Sistema Inteligente de Monitoreo de Alcantarillado
+CREATE DATABASE IF NOT EXISTS `sima` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `sima`;
 
+-- Eliminar tablas en orden por restricciones de llaves foráneas
+DROP TABLE IF EXISTS `lecturas`;
+DROP TABLE IF EXISTS `reportes`;
+DROP TABLE IF EXISTS `pozos`;
+DROP TABLE IF EXISTS `usuarios`;
 
-SET NAMES utf8mb4;
-DROP DATABASE IF EXISTS sima;
-CREATE DATABASE sima CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE sima;
+-- ------------------------------------------------------------
+-- 1. Tabla: usuarios
+-- ------------------------------------------------------------
+CREATE TABLE `usuarios` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `nombre` VARCHAR(100) NOT NULL,
+  `email` VARCHAR(150) NOT NULL UNIQUE,
+  `password` VARCHAR(255) NOT NULL,
+  `rol` ENUM('ciudadano', 'operario', 'admin') NOT NULL DEFAULT 'ciudadano',
+  `creado_en` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Usuarios del sistema (ciudadanos, operarios, técnicos, administradores)
-CREATE TABLE usuarios (
-  id            INT AUTO_INCREMENT PRIMARY KEY,
-  nombre        VARCHAR(100) NOT NULL,
-  email         VARCHAR(120) NOT NULL UNIQUE,
-  password_hash VARCHAR(100) NOT NULL,
-  rol           ENUM('ciudadano','operario','tecnico','admin') NOT NULL DEFAULT 'ciudadano',
-  creado        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+-- ------------------------------------------------------------
+-- 2. Tabla: pozos
+-- ------------------------------------------------------------
+CREATE TABLE `pozos` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `codigo` VARCHAR(20) NOT NULL UNIQUE,
+  `ubicacion` VARCHAR(255) NOT NULL,
+  `latitud` DECIMAL(10, 8) NOT NULL,
+  `longitud` DECIMAL(11, 8) NOT NULL,
+  `nivel_pct` INT NOT NULL DEFAULT 0,
+  `profundidad_m` DECIMAL(4,2) DEFAULT 3.50,
+  `creado_en` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Pozos de inspección monitoreados
-CREATE TABLE pozos (
-  id        INT AUTO_INCREMENT PRIMARY KEY,
-  codigo    VARCHAR(10)  NOT NULL UNIQUE,
-  nombre    VARCHAR(100) NOT NULL,
-  lat       DOUBLE NOT NULL,
-  lng       DOUBLE NOT NULL,
-  nivel_pct INT NOT NULL DEFAULT 0      -- porcentaje de llenado (0-100)
-) ENGINE=InnoDB;
+-- ------------------------------------------------------------
+-- 3. Tabla: lecturas (Histórico de sensores IoT)
+-- ------------------------------------------------------------
+CREATE TABLE `lecturas` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `pozo_id` INT NOT NULL,
+  `nivel_pct` INT NOT NULL,
+  `fecha` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`pozo_id`) REFERENCES `pozos`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Historial de mediciones de los sensores 
-CREATE TABLE lecturas (
-  id        INT AUTO_INCREMENT PRIMARY KEY,
-  pozo_id   INT NOT NULL,
-  nivel_pct INT NOT NULL,
-  fecha     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (pozo_id) REFERENCES pozos(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+-- ------------------------------------------------------------
+-- 4. Tabla: reportes (Incidencias ciudadanas)
+-- ------------------------------------------------------------
+CREATE TABLE `reportes` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `usuario_id` INT NOT NULL,
+  `lat` DECIMAL(10, 8) NOT NULL,
+  `lng` DECIMAL(11, 8) NOT NULL,
+  `tipo` VARCHAR(100) NOT NULL,
+  `descripcion` TEXT DEFAULT NULL,
+  `evidencia` LONGTEXT DEFAULT NULL,
+  `estado` ENUM('pendiente', 'inspeccionado', 'resuelto') NOT NULL DEFAULT 'pendiente',
+  `fecha_reporte` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `inspeccionado_por` INT DEFAULT NULL,
+  `inspeccionado_en` DATETIME DEFAULT NULL,
+  `nota_inspeccion` TEXT DEFAULT NULL,
+  `resuelto_por` INT DEFAULT NULL,
+  `resuelto_en` DATETIME DEFAULT NULL,
+  `nota_resolucion` TEXT DEFAULT NULL,
+  FOREIGN KEY (`usuario_id`) REFERENCES `usuarios`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`inspeccionado_por`) REFERENCES `usuarios`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`resuelto_por`) REFERENCES `usuarios`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Reportes de problemas hechos por ciudadanos
-CREATE TABLE reportes (
-  id          INT AUTO_INCREMENT PRIMARY KEY,
-  usuario_id  INT NOT NULL,
-  lat         DOUBLE NOT NULL,
-  lng         DOUBLE NOT NULL,
-  tipo        VARCHAR(50) NOT NULL,
-  descripcion TEXT,
-  estado      ENUM('pendiente','inspeccionado','resuelto') NOT NULL DEFAULT 'pendiente',
-  creado      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  -- Seguimiento del operario/técnico
-  inspeccionado_por INT NULL,
-  inspeccionado_en  DATETIME NULL,
-  nota_inspeccion   TEXT NULL,
-  resuelto_por      INT NULL,
-  resuelto_en       DATETIME NULL,
-  nota_resolucion   TEXT NULL,
-  FOREIGN KEY (usuario_id)        REFERENCES usuarios(id),
-  FOREIGN KEY (inspeccionado_por) REFERENCES usuarios(id),
-  FOREIGN KEY (resuelto_por)      REFERENCES usuarios(id)
-) ENGINE=InnoDB;
+-- ============================================================
+-- INSERCIÓN DE DATOS INICIALES DE PRUEBA
+-- ============================================================
 
--- ---------------- Datos iniciales ----------------
--- Contraseñas: admin123 y operario123
-INSERT INTO usuarios (nombre, email, password_hash, rol) VALUES
-  ('Administrador SIMA', 'admin@sima.com',    '$2b$10$TQ583sgbNhIaPm9ABcAEbuhundIkzlH165Y5SOS0VXZ2eGvbSJese', 'admin'),
-  ('Operario Demo',      'operario@sima.com', '$2b$10$pYqlmE.ZvQWbJd6q9a8e3ep7ZgQSykTQ9NHBu1CE.hqgg.GFzPIly', 'operario');
+-- Usuarios Semilla
+INSERT INTO `usuarios` (`id`, `nombre`, `email`, `password`, `rol`) VALUES
+(1, 'Administrador SIMA', 'admin@sima.com', 'admin123', 'admin'),
+(2, 'Operario de Campo', 'operario@sima.com', 'operario123', 'operario'),
+(3, 'Jhon Agudelo', 'ciudadano@sima.com', 'ciudadano123', 'ciudadano');
 
--- Zona de ejemplo: centro de Santa Marta (12 pozos)
-INSERT INTO pozos (codigo, nombre, lat, lng, nivel_pct) VALUES
-  ('P-001', 'Pozo de inspección 1', 11.239000, -74.214300, 20),
-  ('P-002', 'Pozo de inspección 2', 11.239000, -74.212100, 35),
-  ('P-003', 'Pozo de inspección 3', 11.239000, -74.209900, 15),
-  ('P-004', 'Pozo de inspección 4', 11.239000, -74.207700, 82),
-  ('P-005', 'Pozo de inspección 5', 11.240800, -74.214300, 45),
-  ('P-006', 'Pozo de inspección 6', 11.240800, -74.212100, 60),
-  ('P-007', 'Pozo de inspección 7', 11.240800, -74.209900, 25),
-  ('P-008', 'Pozo de inspección 8', 11.240800, -74.207700, 90),
-  ('P-009', 'Pozo de inspección 9', 11.242600, -74.214300, 30),
-  ('P-010', 'Pozo de inspección 10', 11.242600, -74.212100, 55),
-  ('P-011', 'Pozo de inspección 11', 11.242600, -74.209900, 18),
-  ('P-012', 'Pozo de inspección 12', 11.242600, -74.207700, 72);
+-- Pozos de Telemetría (Santa Marta)
+INSERT INTO `pozos` (`id`, `codigo`, `ubicacion`, `latitud`, `longitud`, `nivel_pct`, `profundidad_m`) VALUES
+(1, 'PZ-001', 'Av. El Libertador #15', 11.24080000, -74.21100000, 35, 3.50),
+(2, 'PZ-002', 'Centro Histórico Cr 3', 11.24500000, -74.21300000, 65, 4.00),
+(3, 'PZ-003', 'Rodadero Cl 8', 11.20100000, -74.22800000, 82, 3.20),
+(4, 'PZ-004', 'Bello Horizonte', 11.15500000, -74.23000000, 20, 3.80);
 
--- Comprobación
-SELECT * FROM pozos;
-SELECT id, nombre, email, rol FROM usuarios;
+-- Lecturas Iniciales
+INSERT INTO `lecturas` (`pozo_id`, `nivel_pct`) VALUES
+(1, 35), (2, 65), (3, 82), (4, 20);

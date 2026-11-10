@@ -1,42 +1,120 @@
 <template>
-  <div class="pozo" :class="pozo.estado">
-    <div class="top">
-      <strong>{{ pozo.codigo }}</strong>
-      <span class="etiqueta">{{ textoEstado }}</span>
+  <div class="pozo-card-dark" :class="pozo.estado">
+    <div class="pozo-header">
+      <div>
+        <span class="codigo-pozo">{{ pozo.codigo }}</span>
+        <h5 class="nombre-pozo">{{ pozo.nombre }}</h5>
+      </div>
+      <span class="badge-estado" :class="pozo.estado">{{ pozo.estado.toUpperCase() }}</span>
     </div>
-    <p class="nombre">{{ pozo.nombre }}</p>
-    <div class="barra"><div class="relleno" :style="{ width: pozo.nivel_pct + '%' }"></div></div>
-    <small>Nivel: {{ pozo.nivel_pct }}%</small>
+
+    <div class="pozo-body">
+      <div class="nivel-info">
+        <span>Nivel de Agua: <strong>{{ pozo.nivel_pct }}%</strong></span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-fill" :class="pozo.estado" :style="{ width: pozo.nivel_pct + '%' }"></div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 export default {
   name: 'PozoCardComponent',
-  props: { pozo: { type: Object, required: true } },
-  computed: {
-    textoEstado() {
-      return { verde: 'Normal', amarillo: 'Advertencia', rojo: 'Riesgo' }[this.pozo.estado]
-    }
+  props: {
+    pozo: { type: Object, required: true }
   }
 }
 </script>
 
 <style scoped>
-.pozo { background: #fff; border: 1px solid #e2e8f0; border-left: 6px solid; border-radius: 8px; padding: 0.7rem 0.9rem; }
-.pozo.verde { border-left-color: #22c55e; }
-.pozo.amarillo { border-left-color: #eab308; }
-.pozo.rojo { border-left-color: #ef4444; }
-.top { display: flex; justify-content: space-between; align-items: center; }
-.etiqueta { font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: #f1f5f9; }
-.verde .etiqueta { background: #dcfce7; color: #166534; }
-.amarillo .etiqueta { background: #fef9c3; color: #854d0e; }
-.rojo .etiqueta { background: #fee2e2; color: #991b1b; }
-.nombre { margin: 0.25rem 0 0.5rem; font-size: 0.85rem; color: #64748b; }
-.barra { height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
-.relleno { height: 100%; background: #0284c7; transition: width 0.5s; }
-.rojo .relleno { background: #ef4444; }
-.amarillo .relleno { background: #eab308; }
-.verde .relleno { background: #22c55e; }
-small { color: #64748b; }
+.pozo-card-dark {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.9rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pozo-card-dark:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.pozo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.6rem;
+}
+
+.codigo-pozo {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #38bdf8;
+}
+
+.nombre-pozo {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.badge-estado {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.badge-estado.verde {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid #22c55e;
+}
+
+.badge-estado.amarillo {
+  background: rgba(234, 179, 8, 0.2);
+  color: #fde047;
+  border: 1px solid #eab308;
+}
+
+.badge-estado.rojo {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid #ef4444;
+}
+
+.nivel-info {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-bottom: 0.4rem;
+}
+
+.progress-bar-bg {
+  background: #1e293b;
+  height: 8px;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.5s ease-in-out;
+}
+
+.progress-fill.verde {
+  background: #22c55e;
+}
+
+.progress-fill.amarillo {
+  background: #eab308;
+}
+
+.progress-fill.rojo {
+  background: #ef4444;
+}
 </style>

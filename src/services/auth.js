@@ -1,23 +1,29 @@
 import { reactive } from 'vue'
 
-// Estado de sesión compartido por toda la app
-const guardado = JSON.parse(localStorage.getItem('sima_sesion') || 'null')
+function obtenerUsuarioGuardado() {
+  try {
+    const raw = localStorage.getItem('user')
+    return raw ? JSON.parse(raw) : null
+  } catch (e) {
+    return null
+  }
+}
 
 export const sesion = reactive({
-  token: guardado ? guardado.token : null,
-  user: guardado ? guardado.user : null
+  token: localStorage.getItem('token') || null,
+  user: obtenerUsuarioGuardado()
 })
 
 export function iniciarSesion(token, user) {
+  localStorage.setItem('token', token)
+  localStorage.setItem('user', JSON.stringify(user))
   sesion.token = token
   sesion.user = user
-  localStorage.setItem('sima_sesion', JSON.stringify({ token, user }))
 }
 
 export function cerrarSesion() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
   sesion.token = null
   sesion.user = null
-  localStorage.removeItem('sima_sesion')
 }
-
-export const esPersonal = () => sesion.user && sesion.user.rol !== 'ciudadano'

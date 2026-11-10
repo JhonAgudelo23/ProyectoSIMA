@@ -1,7 +1,19 @@
 <template>
-  <router-view/>
+  <div id="app">
+    <router-view />
+  </div>
 </template>
 
-<style>
+<script>
+export default {
+  name: 'App'
+}
+</script>
 
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0f172a;
+}
 </style>
