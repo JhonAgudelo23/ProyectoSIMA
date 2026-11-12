@@ -1,295 +1,222 @@
 <template>
-  <div class="gestion-reportes">
-    <div class="header-reportes">
-      <h3>📢 Gestión de Reportes Ciudadanos</h3>
-      <div class="filtros">
-        <button v-for="f in ['todos', 'pendiente', 'inspeccionado', 'resuelto']" :key="f" @click="filtro = f"
-          :class="['btn-filtro', { activo: filtro === f }]">
-          {{ f.toUpperCase() }}
-        </button>
-      </div>
+  <div class="reportes-panel">
+    <div class="header-panel">
+      <h3>Incidencias Reportadas ({{ listaReportes.length }})</h3>
+      <button class="btn-recargar" @click="cargarReportes">Actualizar</button>
     </div>
 
-    <div class="tabla-card mt-3">
-      <table class="tabla-gestion">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Evidencia</th>
-            <th>Tipo / Detalle</th>
-            <th>Ciudadano</th>
-            <th>Ubicación</th>
-            <th>Estado</th>
-            <th>Acciones / Notas</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="reportesFiltrados.length === 0">
-            <td colspan="7" class="text-center py-4">No hay reportes en esta categoría.</td>
-          </tr>
-          <tr v-for="rep in reportesFiltrados" :key="rep.id">
-            <td><strong>#{{ rep.id }}</strong></td>
-            <td>
-              <img v-if="rep.evidencia" :src="rep.evidencia" alt="Foto" class="thumb-img"
-                @click="fotoModal = rep.evidencia" />
-              <span v-else class="text-muted">Sin foto</span>
-            </td>
-            <td>
-              <strong class="text-tipo">{{ rep.tipo }}</strong>
-              <p class="desc-text">{{ rep.descripcion || 'Sin descripción' }}</p>
-            </td>
-            <td>{{ rep.ciudadano || 'Ciudadano' }}</td>
-            <td>
-              <span class="badge-coords">📍 {{ parseFloat(rep.lat).toFixed(4) }}, {{ parseFloat(rep.lng).toFixed(4)
-                }}</span>
-            </td>
-            <td>
-              <span :class="['badge-estado', rep.estado]">
-                {{ rep.estado.toUpperCase() }}
-              </span>
-            </td>
-            <td>
-              <!-- Acciones de cambio de estado -->
-              <div v-if="rep.estado === 'pendiente'" class="action-box">
-                <input type="text" v-model="notas[rep.id]" placeholder="Nota de inspección..." class="input-nota" />
-                <button @click="actualizarEstado(rep.id, 'inspeccionado')" class="btn-act btn-inspeccionar">
-                  🔍 Inspeccionar
-                </button>
-              </div>
+    <div v-if="cargando" class="estado-msg">Cargando incidencias...</div>
+    <div v-else-if="error" class="error-msg">{{ error }}</div>
+    <div v-else-if="listaReportes.length === 0" class="estado-msg">No hay incidencias registradas aún.</div>
 
-              <div v-else-if="rep.estado === 'inspeccionado'" class="action-box">
-                <input type="text" v-model="notas[rep.id]" placeholder="Nota de solución..." class="input-nota" />
-                <button @click="actualizarEstado(rep.id, 'resuelto')" class="btn-act btn-resolver">
-                  ✅ Resolver
-                </button>
-              </div>
+    <div v-else class="grid-tarjetas">
+      <div v-for="rep in listaReportes" :key="rep.id" class="tarjeta-reporte">
+        <div class="tarjeta-top">
+          <span class="badge-tipo">{{ rep.tipo }}</span>
+          <span :class="['badge-estado', rep.estado]">{{ rep.estado.toUpperCase() }}</span>
+        </div>
 
-              <div v-else class="text-resuelto">
-                <small v-if="rep.nota_resolucion"><strong>Nota:</strong> {{ rep.nota_resolucion }}</small>
-                <small v-else>Atendido por {{ rep.resuelto_por_nombre || 'Personal' }}</small>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <p class="descripcion">{{ rep.descripcion || 'Sin descripción adicional.' }}</p>
 
-    <!-- Modal Foto Ampliada -->
-    <div v-if="fotoModal" class="modal-overlay" @click="fotoModal = null">
-      <div class="modal-content">
-        <img :src="fotoModal" alt="Foto Evidencia" />
+        <!-- Evidencia Fotográfica -->
+        <div v-if="rep.evidencia" class="evidencia-contenedor">
+          <img :src="rep.evidencia" alt="Evidencia del reporte" class="foto-evidencia" />
+        </div>
+        <p v-else class="sin-foto">Sin evidencia fotográfica adjunta</p>
+
+        <div class="meta-info">
+          <span>👤 {{ rep.ciudadano || 'Ciudadano' }}</span>
+          <span>📍 {{ Number(rep.lat).toFixed(4) }}, {{ Number(rep.lng).toFixed(4) }}</span>
+        </div>
+
+        <!-- Acciones según estado y rol -->
+        <div class="acciones">
+          <button
+            v-if="rep.estado === 'pendiente' && puedeGestionar"
+            class="btn-accion inspeccionar"
+            @click="cambiarEstado(rep.id, 'inspeccionado')"
+          >
+            Marcar Inspeccionado
+          </button>
+
+          <button
+            v-if="rep.estado === 'inspeccionado' && puedeGestionar"
+            class="btn-accion resolver"
+            @click="cambiarEstado(rep.id, 'resuelto')"
+          >
+            Marcar Resuelto
+          </button>
+
+          <button
+            v-if="puedeEliminar"
+            class="btn-accion eliminar"
+            @click="borrarReporte(rep.id)"
+          >
+            Eliminar
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { reportes, cambiarEstadoReporte } from '../services/api'
+import { reportes, cambiarEstadoReporte, eliminarReporte } from '../services/api';
 
 export default {
   name: 'ReportesOperarioComponent',
   data() {
     return {
       listaReportes: [],
-      filtro: 'todos',
-      notas: {},
-      fotoModal: null
-    }
+      cargando: false,
+      error: ''
+    };
   },
   computed: {
-    reportesFiltrados() {
-      if (this.filtro === 'todos') return this.listaReportes
-      return this.listaReportes.filter(r => r.estado === this.filtro)
+    usuario() {
+      try {
+        return JSON.parse(localStorage.getItem('user')) || {};
+      } catch {
+        return {};
+      }
+    },
+    puedeGestionar() {
+      return ['operario', 'admin'].includes(this.usuario.rol);
+    },
+    puedeEliminar() {
+      return ['admin', 'ciudadano'].includes(this.usuario.rol);
     }
   },
   mounted() {
-    this.cargarReportes()
+    this.cargarReportes();
   },
   methods: {
     async cargarReportes() {
+      this.cargando = true;
+      this.error = '';
       try {
-        this.listaReportes = await reportes()
+        this.listaReportes = await reportes();
       } catch (err) {
-        console.error('Error cargando reportes:', err)
+        this.error = err.message || 'Error al cargar las incidencias';
+      } finally {
+        this.cargando = false;
       }
     },
-    async actualizarEstado(id, nuevoEstado) {
-      const nota = this.notas[id] || ''
+    async cambiarEstado(id, nuevoEstado) {
+      const nota = prompt(`Nota opcional para marcar como ${nuevoEstado}:`) || '';
       try {
-        await cambiarEstadoReporte(id, nuevoEstado, nota)
-        this.notas[id] = ''
-        await this.cargarReportes()
+        await cambiarEstadoReporte(id, nuevoEstado, nota);
+        await this.cargarReportes();
       } catch (err) {
-        alert(err.message || 'Error actualizando el reporte')
+        alert(err.message);
+      }
+    },
+    async borrarReporte(id) {
+      if (!confirm('¿Seguro que deseas eliminar este reporte?')) return;
+      try {
+        await eliminarReporte(id);
+        await this.cargarReportes();
+      } catch (err) {
+        alert(err.message);
       }
     }
   }
-}
+};
 </script>
 
 <style scoped>
-.gestion-reportes {
-  color: #f8fafc;
+.reportes-panel {
+  margin-top: 1.5rem;
 }
-
-.header-reportes {
+.header-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.btn-recargar {
+  background: #334155;
+  color: #f8fafc;
+  border: none;
+  padding: 0.45rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.grid-tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.2rem;
+}
+.tarjeta-reporte {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.tarjeta-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-
-.header-reportes h3 {
-  margin: 0;
+.badge-tipo {
+  font-weight: 700;
   color: #38bdf8;
 }
-
-.filtros {
-  display: flex;
-  gap: 8px;
-}
-
-.btn-filtro {
-  background: #0f172a;
-  border: 1px solid #334155;
-  color: #94a3b8;
-  padding: 5px 12px;
-  border-radius: 6px;
+.badge-estado {
   font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
 }
-
-.btn-filtro.activo {
-  background: #0284c7;
-  color: #fff;
-  border-color: #38bdf8;
+.badge-estado.pendiente { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.badge-estado.inspeccionado { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+.badge-estado.resuelto { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.descripcion {
+  color: #cbd5e1;
+  font-size: 0.92rem;
 }
-
-.tabla-card {
-  background: #1e293b;
-  border-radius: 10px;
-  border: 1px solid #334155;
-  overflow: hidden;
-}
-
-.tabla-gestion {
+.evidencia-contenedor {
   width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 0.85rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #475569;
 }
-
-.tabla-gestion th {
-  background: #0f172a;
-  padding: 12px;
-  color: #94a3b8;
-}
-
-.tabla-gestion td {
-  padding: 12px;
-  border-top: 1px solid #334155;
-  vertical-align: middle;
-}
-
-.thumb-img {
-  width: 40px;
-  height: 40px;
+.foto-evidencia {
+  width: 100%;
+  max-height: 180px;
   object-fit: cover;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 1px solid #0284c7;
+  display: block;
 }
-
-.text-tipo {
-  color: #38bdf8;
+.sin-foto {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-style: italic;
 }
-
-.desc-text {
-  margin: 2px 0 0 0;
+.meta-info {
+  display: flex;
+  justify-content: space-between;
   font-size: 0.8rem;
   color: #94a3b8;
 }
-
-.badge-coords {
-  background: #0f172a;
-  padding: 3px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  color: #cbd5e1;
-}
-
-.action-box {
+.acciones {
   display: flex;
-  gap: 6px;
-  flex-direction: column;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: auto;
 }
-
-.input-nota {
-  background: #0f172a;
-  border: 1px solid #334155;
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-}
-
-.btn-act {
+.btn-accion {
   border: none;
-  padding: 5px 10px;
-  border-radius: 4px;
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
   font-weight: 600;
-  font-size: 0.75rem;
   cursor: pointer;
+  color: white;
 }
-
-.btn-inspeccionar {
-  background: #0284c7;
-  color: #fff;
-}
-
-.btn-resolver {
-  background: #22c55e;
-  color: #fff;
-}
-
-.badge-estado {
-  padding: 3px 8px;
-  border-radius: 99px;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
-.badge-estado.pendiente {
-  background: rgba(234, 179, 8, 0.2);
-  color: #facc15;
-}
-
-.badge-estado.inspeccionado {
-  background: rgba(56, 189, 248, 0.2);
-  color: #38bdf8;
-}
-
-.badge-estado.resuelto {
-  background: rgba(34, 197, 94, 0.2);
-  color: #4ade80;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.modal-content img {
-  max-width: 90vw;
-  max-height: 80vh;
-  border-radius: 8px;
-}
+.inspeccionar { background: #0284c7; }
+.resolver { background: #059669; }
+.eliminar { background: #dc2626; }
 </style>

@@ -1,73 +1,79 @@
 <template>
-  <div class="mapa-wrap">
-    <div ref="mapa" class="mapa"></div>
-    <p class="hint">
-      <span v-if="!modelValue">Haz clic en el mapa para marcar la ubicación del problema.</span>
-      <span v-else>Ubicación: {{ modelValue.lat.toFixed(5) }}, {{ modelValue.lng.toFixed(5) }}</span>
-    </p>
-  </div>
+  <div ref="mapaContenedor" class="mapa-selector"></div>
 </template>
 
 <script>
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+const iconoPin = L.divIcon({
+  className: 'pin-personalizado',
+  html: `<div style="
+    width: 28px;
+    height: 28px;
+    background: #ef4444;
+    border: 3px solid #ffffff;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.45);
+  "></div>`,
+  iconSize: [28, 28],
+  iconAnchor: [14, 28]
+});
 
 export default {
   name: 'MapaSelectorComponent',
-  props: {
-    modelValue: { type: Object, default: null }, // { lat, lng }
-    centro: { type: Array, default: () => [11.2408, -74.211] },
-    pozos: { type: Array, default: () => [] }
+  emits: ['seleccionar'],
+  created() {
+    // Se definen aquí para que Vue 3 no los convierta en Proxy reactivo
+    this.mapa = null;
+    this.marcador = null;
+    this.timerResize = null;
   },
-  emits: ['update:modelValue'],
   mounted() {
-    this.map = L.map(this.$refs.mapa).setView(this.centro, 16)
+    if (!this.$refs.mapaContenedor) return;
+
+    this.mapa = L.map(this.$refs.mapaContenedor).setView([11.2408, -74.2110], 14);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
-    }).addTo(this.map)
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(this.mapa);
 
-    // Pozos de referencia (grises) para que el ciudadano se ubique
-    this.pozos.forEach(p => {
-      L.circleMarker([p.lat, p.lng], { radius: 6, color: '#64748b', fillOpacity: 0.5 })
-        .bindTooltip(p.codigo)
-        .addTo(this.map)
-    })
-
-    this.map.on('click', e => {
-      this.$emit('update:modelValue', { lat: e.latlng.lat, lng: e.latlng.lng })
-    })
-    this.dibujar()
-  },
-  watch: {
-    modelValue() { this.dibujar() }
-  },
-  methods: {
-    dibujar() {
-      if (this.marcador) this.map.removeLayer(this.marcador)
-      if (this.modelValue) {
-        this.marcador = L.circleMarker([this.modelValue.lat, this.modelValue.lng], {
-          radius: 11, color: '#b91c1c', fillColor: '#ef4444', fillOpacity: 0.85, weight: 3
-        }).addTo(this.map)
+    this.mapa.on('click', e => {
+      const { lat, lng } = e.latlng;
+      if (this.marcador) {
+        this.marcador.setLatLng([lat, lng]);
+      } else {
+        this.marcador = L.marker([lat, lng], { icon: iconoPin }).addTo(this.mapa);
       }
-    }
+      this.$emit('seleccionar', { lat, lng });
+    });
+
+    this.timerResize = setTimeout(() => {
+      if (this.mapa && this.$refs.mapaContenedor) {
+        this.mapa.invalidateSize();
+      }
+    }, 250);
   },
   beforeUnmount() {
-    if (this.map) this.map.remove()
+    if (this.timerResize) {
+      clearTimeout(this.timerResize);
+      this.timerResize = null;
+    }
+    if (this.mapa) {
+      this.mapa.remove();
+      this.mapa = null;
+    }
   }
-}
+};
 </script>
 
 <style scoped>
-.mapa {
-  height: 380px;
+.mapa-selector {
   width: 100%;
+  height: 360px;
   border-radius: 10px;
-  border: 1px solid #cbd5e1;
-}
-
-.hint {
-  font-size: 0.85rem;
-  color: #64748b;
-  margin: 0.5rem 0 0;
+  z-index: 1;
+  cursor: crosshair;
 }
 </style>

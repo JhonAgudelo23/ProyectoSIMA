@@ -39,6 +39,7 @@
             </div>
 
             <p v-if="exitoMsg" class="text-exito mt-3">{{ exitoMsg }}</p>
+            <p v-if="errorMsg" class="text-error mt-3">{{ errorMsg }}</p>
 
             <button type="submit" class="btn-send mt-4" :disabled="enviando">
               {{ enviando ? 'Enviando...' : '💬 Enviar Mensaje Directo' }}
@@ -52,6 +53,7 @@
 
 <script>
 import NavbarComponent from '../components/NavbarComponent.vue'
+import { enviarContacto } from '../services/api'
 
 export default {
   name: 'Contacto',
@@ -60,6 +62,7 @@ export default {
     return {
       enviando: false,
       exitoMsg: '',
+      errorMsg: '',
       form: { nombre: '', email: '', asunto: '', mensaje: '' }
     }
   },
@@ -67,10 +70,41 @@ export default {
     async enviarSoporte() {
       this.enviando = true
       this.exitoMsg = ''
-      await new Promise(r => setTimeout(r, 800))
-      this.exitoMsg = '¡Tu mensaje ha sido enviado exitosamente al soporte técnico!'
-      this.form = { nombre: '', email: '', asunto: '', mensaje: '' }
-      this.enviando = false
+      this.errorMsg = ''
+
+      try {
+        // 1. Guardar respaldo en la base de datos local (server/data.json)
+        await enviarContacto(this.form).catch(() => {})
+
+        // 2. Enviar el correo directamente desde el navegador a jrrivas0814@gmail.com
+        const res = await fetch('https://formsubmit.co/ajax/jrrivas0814@gmail.com', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            Nombre: this.form.nombre,
+            Correo: this.form.email,
+            Asunto: this.form.asunto,
+            Mensaje: this.form.mensaje,
+            _subject: `Soporte SIMA: ${this.form.asunto}`,
+            _template: 'table'
+          })
+        })
+
+        const data = await res.json()
+        if (!res.ok || data.success === 'false') {
+          throw new Error(data.message || 'No se pudo despachar el correo.')
+        }
+
+        this.exitoMsg = '¡Tu mensaje ha sido enviado exitosamente a soporte técnico!'
+        this.form = { nombre: '', email: '', asunto: '', mensaje: '' }
+      } catch (err) {
+        this.errorMsg = err.message || 'Error al enviar el correo. Verifica tu conexión a internet.'
+      } finally {
+        this.enviando = false
+      }
     }
   }
 }

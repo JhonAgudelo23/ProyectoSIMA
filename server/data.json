@@ -1,0 +1,169 @@
+{
+  "usuarios": [
+    {
+      "id": 1,
+      "nombre": "Administrador",
+      "email": "admin@sima.com",
+      "password": "admin123",
+      "rol": "admin"
+    },
+    {
+      "id": 2,
+      "nombre": "Operario SIMA",
+      "email": "operario@sima.com",
+      "password": "operario123",
+      "rol": "operario"
+    },
+    {
+      "id": 3,
+      "nombre": "Ciudadano Demo",
+      "email": "ciudadano@sima.com",
+      "password": "123456",
+      "rol": "ciudadano"
+    }
+  ],
+  "pozos": [
+    {
+      "id": 1,
+      "codigo": "PZ-001",
+      "nombre": "Pozo Centro Histórico",
+      "sector": "Centro",
+      "lat": 11.2408,
+      "lng": -74.211,
+      "nivel_pct": 67,
+      "capacidad_cm": 250
+    },
+    {
+      "id": 2,
+      "codigo": "PZ-002",
+      "nombre": "Pozo Av. Libertador",
+      "sector": "Libertador",
+      "lat": 11.2425,
+      "lng": -74.205,
+      "nivel_pct": 46,
+      "capacidad_cm": 300
+    },
+    {
+      "id": 3,
+      "codigo": "PZ-003",
+      "nombre": "Pozo Mercado Público",
+      "sector": "Mercado",
+      "lat": 11.2385,
+      "lng": -74.2095,
+      "nivel_pct": 48,
+      "capacidad_cm": 280
+    },
+    {
+      "id": 4,
+      "codigo": "PZ-004",
+      "nombre": "Pozo Pescaíto Norte",
+      "sector": "Pescaíto",
+      "lat": 11.251,
+      "lng": -74.208,
+      "nivel_pct": 45,
+      "capacidad_cm": 260
+    },
+    {
+      "id": 5,
+      "codigo": "PZ-005",
+      "nombre": "Pozo El Rodadero",
+      "sector": "Rodadero",
+      "lat": 11.2045,
+      "lng": -74.2255,
+      "nivel_pct": 59,
+      "capacidad_cm": 320
+    }
+  ],
+  "reportes": [
+    {
+      "id": 1,
+      "usuario_id": 3,
+      "ciudadano": "Ciudadano Demo",
+      "lat": 11.2412,
+      "lng": -74.2105,
+      "tipo": "Mal olor",
+      "descripcion": "Olor fuerte en alcantarilla principal del sector",
+      "evidencia": null,
+      "estado": "pendiente",
+      "fecha_reporte": "2026-11-12T22:09:31.900Z",
+      "inspeccionado_por": null,
+      "inspeccionado_por_nombre": null,
+      "inspeccionado_en": null,
+      "nota_inspeccion": null,
+      "resuelto_por": null,
+      "resuelto_por_nombre": null,
+      "resuelto_en": null,
+      "nota_resolucion": null
+    },
+    {
+      "id": 2,
+      "usuario_id": 3,
+      "ciudadano": "Ciudadano Demo",
+      "lat": 11.247910970791068,
+      "lng": -74.21244133075757,
+      "tipo": "Desbordamiento",
+      "descripcion": "rebosa mucha agua de la alcantrilla",
+      "evidencia": "data:image/png;base64,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",
+      "estado": "resuelto",
+      "fecha_reporte": "2026-11-12T22:12:21.336Z",
+      "inspeccionado_por": 2,
+      "inspeccionado_por_nombre": "Operario SIMA",
+      "inspeccionado_en": "2026-11-12T22:12:59.034Z",
+      "nota_inspeccion": "resuelto",
+      "resuelto_por": 2,
+      "resuelto_por_nombre": "Operario SIMA",
+      "resuelto_en": "2026-11-12T22:13:03.549Z",
+      "nota_resolucion": "resuelto"
+    }
+  ],
+  "lecturas": [
+    {
+      "pozo_id": 1,
+      "codigo": "PZ-001",
+      "nivel_pct": 67,
+      "fecha": "2026-11-12T22:15:17.456Z"
+    },
+    {
+      "pozo_id": 2,
+      "codigo": "PZ-002",
+      "nivel_pct": 46,
+      "fecha": "2026-11-12T22:15:17.456Z"
+    },
+    {
+      "pozo_id": 3,
+      "codigo": "PZ-003",
+      "nivel_pct": 48,
+      "fecha": "2026-11-12T22:15:17.456Z"
+    },
+    {
+      "pozo_id": 4,
+      "codigo": "PZ-004",
+      "nivel_pct": 45,
+      "fecha": "2026-11-12T22:15:17.456Z"
+    },
+    {
+      "pozo_id": 5,
+      "codigo": "PZ-005",
+      "nivel_pct": 59,
+      "fecha": "2026-11-12T22:15:17.456Z"
+    }
+  ],
+  "mensajes": [
+    {
+      "id": 1,
+      "nombre": "pepe",
+      "email": "zimaoandres45@gmail.com",
+      "asunto": "Falla en el mapa",
+      "mensaje": "pepe",
+      "fecha": "2026-11-12T22:10:37.573Z"
+    },
+    {
+      "id": 2,
+      "nombre": "pepe",
+      "email": "zimaoandres45@gmail.com",
+      "asunto": "Falla en el mapa",
+      "mensaje": "pepe",
+      "fecha": "2026-11-12T22:11:11.308Z"
+    }
+  ]
+}
